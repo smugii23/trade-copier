@@ -184,11 +184,13 @@ namespace NinjaTrader.NinjaScript.AddOns
 		
 		    if (!shouldCopy)
 		        return;
-		
+			
+			// look at order id, and return false if it already existed (double entry protection)
 		    var id = o.OrderId;
 		    if (!seenWorkingOrders.Add(id))
 		        return;
-		
+			
+			// look up each slave account and attempt to copy
 		    foreach (var kvp in slaveAccounts)
 		    {
 		        string slaveName = kvp.Key;
@@ -204,15 +206,17 @@ namespace NinjaTrader.NinjaScript.AddOns
 		        Print($"[COPY PLAN] MasterOrderId={id} -> Slave={slave.Name} " +
 		              $"{o.OrderAction} {contracts} {o.Instrument?.FullName} " +
 		              $"Type={o.OrderType} State={o.OrderState} Lmt={o.LimitPrice} Stp={o.StopPrice}");
-		
-		        if (!liveSubmitEnabled)
+				
+		        if (!liveSubmitEnabled) // check if false for dry run / debugging
 		            continue;
 		
 		        try
 		        {
+					// map master orders to slave orders
 		            double limitPrice = (o.OrderType == OrderType.Limit || o.OrderType == OrderType.StopLimit) ? o.LimitPrice : 0;
 		            double stopPrice  = (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.StopLimit) ? o.StopPrice : 0;
-		
+					
+					// create the order
 		            var copy = slave.CreateOrder(
 		                o.Instrument,
 		                o.OrderAction,
@@ -225,7 +229,7 @@ namespace NinjaTrader.NinjaScript.AddOns
 		                "CopiedByTradeCopier",
 		                null
 		            );
-		
+					
 		            slave.Submit(new[] { copy });
 		
 		            Print($"[LIVE SUBMIT] Sent to {slave.Name}: {o.OrderAction} {contracts} {o.Instrument?.FullName} {o.OrderType} ({o.OrderState})");
@@ -243,4 +247,3 @@ namespace NinjaTrader.NinjaScript.AddOns
 
 	}
 }
-
